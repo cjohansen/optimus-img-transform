@@ -4,7 +4,8 @@
             [optimus.paths :refer [filename-ext just-the-path just-the-filename]]
             [optimus.assets.creation :refer [last-modified]]
             [clojure.java.io :as io]
-            [clojure.set :as set]))
+            [clojure.set :as set]
+            [clojure.string :as str]))
 
 (defn- path-with-metadata [path image quality options]
   (let [extension (filename-ext path)
@@ -46,7 +47,11 @@
       (cond->
        (:crop options) (crop-image (:crop options))
        (:scale options) (collage/scale (:scale options))
-       (or (:width options) (:height options)) (collage/resize :width (:width options) :height (:height options)))
+       (or (:width options) (:height options)) (collage/resize :width (:width options) :height (:height options))
+       (:grayscale options) (collage/grayscale (:grayscale options))
+       (:duotone options) (collage/duotone (:duotone options))
+       (:circle options) collage/circle
+       (:triangle options) (collage/triangle (:triangle options)))
       (util/save tmp-path
                  :quality quality
                  :progressive (:progressive options))))
@@ -54,6 +59,9 @@
 (defn transform-image [path image tmp-dir quality & [options]]
   (when (and (:scale options) (or (:width options) (:height options)))
     (throw (Exception. "Setting both :scale and :width / :height does not compute.")))
+  (when (and (or (:circle options) (:triangle options))
+             (or (:quality options) (:progressive options)))
+    (throw (Exception. ":circle and :triangle images must be PNGs. :quality and :progressive options don't make sense for PNG images.")))
   (let [tmp-path (str tmp-dir (path-with-metadata path image quality options))
         tmp-file (io/file tmp-path)]
     (if (.exists tmp-file)
@@ -62,6 +70,9 @@
 
 (defn- add-filename-prefix [path prefix]
   (str (just-the-path path) prefix (just-the-filename path)))
+
+(defn- ensure-png [path]
+  (str/replace path #"\.[^\.]+$" ".png"))
 
 (defn- transform-asset [asset options]
   (if-not (re-find (:regexp options) (:path asset))
@@ -72,7 +83,8 @@
         (-> asset
             (assoc :resource (io/as-url (str "file:" path)))
             (assoc ::transformed true)
-            (cond-> (:prefix options) (update-in [:path] #(add-filename-prefix % (:prefix options)))))))))
+            (cond-> (:prefix options) (update-in [:path] #(add-filename-prefix % (:prefix options)))
+                    (or (:circle options) (:triangle options)) (update-in [:path] ensure-png)))))))
 
 (defn- enforce-required-options [options required fn-name]
   (let [missing (set/difference required (set (keys options)))]

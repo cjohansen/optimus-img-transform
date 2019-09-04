@@ -34,6 +34,14 @@ You can also specify:
 - `:prefix` to create new images on a prefixed path, instead of replacing.
 - `:crop` to crop the image at `{:offset [x y], :size [w h]}`
 - `:crop` can also be set to `:square`
+- `:circle` set to `true` to cut to a circle. Optionally combine with `:crop`
+  with an `:offset` to control where the circle is cut from. Will cause a
+  conversion to PNG.
+- `:triangle` cut a triangle from your image
+- `:grayscale` to convert your image to grayscale
+- `:duotone` to convert your image to [duotone](https://duotones.co). The effect
+  is controlled with two colors in the form of a vector of R G B in the range
+  0 - 255: `:duotone {:from [0 0 0], :to [255 255 255]}` (black to white).
 
 The only mandatory params are `:regexp` and `:quality`.
 
